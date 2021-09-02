@@ -2,12 +2,20 @@ const {request ,response} = require('express');
 const Usuario = require('../models/usuario');
 const bcryptjs = require('bcryptjs');
 
-const usuariosGet= (req= request, res= response) =>  {
-    const {nombre= 'No name', q}= req.query;
+const usuariosGet= async (req= request, res= response) =>  {
+    
+    /* const usuarios= await Usuario.findAll();
+    const {count: Total_Usuarios}= await Usuario.findAndCountAll(); */
+
+    //Mas rapido juntar todas las promesas
+    const [usuarios, {count: Total_Usuarios} ]= await Promise.all([
+        Usuario.findAll(),
+        Usuario.findAndCountAll()
+    ]) 
+
     res.json({
-        msg:'Hello get',
-        q,
-        nombre
+        Total_Usuarios,
+        usuarios
     });
 }
 
@@ -29,18 +37,41 @@ const usuariosPost= async (req= request, res= response) =>  { //Agregando un nue
     });
 }
 
-const usuariosPut=  (req, res) =>  {
+const usuariosPut=  async (req, res= response) =>  {
 
     const {id}= req.params;
+    const data= req.body;
+
+    //TODO validar contra la bd 
+    if(data.password){
+        //Encriptar contraseña
+        const salt= bcryptjs.genSaltSync(); //Numero de vueltas, es 10 por defecto
+        data.password= bcryptjs.hashSync(data.password, salt); //Encripta en una sola via
+    } 
+    await Usuario.update({password: data.password}, { //Campos a editar
+        where: {
+            id: id //Condicion de busqueda
+        } 
+    });
+ 
     res.status(201).json({
-        msg:'Hello put',
-        id
+        msg:`Datos actualizados del usuario ${id}`
     });
 }
 
-const usuariosDelete= (req, res) =>  {
+const usuariosDelete= async (req, res) =>  {
+
+    const {id} = req.params;
+    
+    await Usuario.destroy({ 
+        where: {
+            id: id //Condicion de busqueda
+        } 
+    });
+
     res.json({
-        msg:'Hello delete'
+        msg:'Usuario eliminado',
+        id
     });
 }
 
